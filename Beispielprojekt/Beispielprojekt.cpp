@@ -62,7 +62,7 @@ public:
 	int beschleunigung_spieler_x;
 	int beschleunigung_spieler_y;
 
-
+	//Hallo Welt
 
 
 
