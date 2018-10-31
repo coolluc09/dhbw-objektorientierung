@@ -38,7 +38,7 @@ public:
 	int position_spieler_x = 400;
 	int position_spieler_y = 200;
 
-
+	//Hallo Welt
 
 
 
