@@ -10,105 +10,89 @@
 #include "Planet.h"
 #include "Vektor2d.h"
 
+using namespace std;
+
 // Simulationsgeschwindigkeit
 const double DT = 100.0;
+
+Gosu::Image spieler;
+
 
 class GameWindow : public Gosu::Window
 {
 public:
-	Gosu::Image bild;
+	Gosu::Image spieler;
 	GameWindow()
-		: Window(800, 600)
-		, bild("rakete.png")
-		// Rakete startet in der Mitte des Bildschirmes
-		, pos(graphics().width() / 2.0, graphics().height() / 2.0)
+		: Window(800, 600),
+		spieler("rakete.png")
+		
 	{
-		set_caption("Gosu Tutorial Game mit Git");
+		//set_caption("Gosu Tutorial Game mit Git");
 
-		// Erzeuge Planeten
-		planets.push_back(Planet({ 200.0, 200.0 }, 0.1, "planet1.png"));
-		planets.push_back(Planet({ 600.0, 200.0 }, 0.1, "planet2.png"));
-		planets.push_back(Planet({ 400.0, 500.0 }, 0.1, "planet3.png"));
+		//// Erzeuge Planeten
+		//planets.push_back(Planet({ 200.0, 200.0 }, 0.1, "planet1.png"));
+		//planets.push_back(Planet({ 600.0, 200.0 }, 0.1, "planet2.png"));
+		//planets.push_back(Planet({ 400.0, 500.0 }, 0.1, "planet3.png"));
 	}
+
+	int position_spieler_x = 400;
+	int position_spieler_y = 200;
+
+
+
+
 
 	// wird bis zu 60x pro Sekunde aufgerufen.
 	// Wenn die Grafikkarte oder der Prozessor nicht mehr hinterherkommen,
 	// dann werden `draw` Aufrufe ausgelassen und die Framerate sinkt
 	void draw() override
 	{
-		bild.draw_rot(pos.get_x(), pos.get_y(), 10.0,
-			rot, // Rotationswinkel in Grad
-			0.5, 0.5 // Position der "Mitte"
+		graphics().draw_quad
+		(
+			350, 200, Gosu::Color::WHITE,
+			450, 200, Gosu::Color::WHITE,
+			350, 220, Gosu::Color::WHITE,
+			450, 220, Gosu::Color::WHITE,
+			0.0
 		);
 
-		auto g2 = (gravity * 1000000000000.0).log();
+		spieler.draw_rot
+		(
+			position_spieler_x,position_spieler_y,0.0,1,0.5,1,1,1
+		);
 
-		Vektor2d rose(50.0, 50.0);
-		auto g = rose - g2;
-		auto s = rose + speed * 1000.0;
 
-		graphics().draw_line(pos.get_x(), pos.get_y(), Gosu::Color::GREEN, input().mouse_x(), input().mouse_y(), Gosu::Color::GREEN, -10.0);
-		graphics().draw_line(rose.get_x(), rose.get_y(), Gosu::Color::RED, g.get_x(), g.get_y(), Gosu::Color::RED, 10.0);
-		graphics().draw_line(rose.get_x(), rose.get_y(), Gosu::Color::BLUE, s.get_x(), s.get_y(), Gosu::Color::BLUE, 10.0);
-
-		for (auto planet : planets) {
-			planet.draw();
-		}
 	}
 
-	double rot = 0.0;
-	Vektor2d pos, speed, gravity;
-	double accel = 0.0;
-	std::vector<Planet> planets;
-
+	
 	// Wird 60x pro Sekunde aufgerufen
 	void update() override
 	{
-		// Geschwindigkeit führt zu Positionsänderung
-		pos += speed * DT;
-
-		// Beschleunigung während "W" gedrückt
-		if (input().down(Gosu::KB_W)) {
-			accel += 0.00001;
+		if (input().down(Gosu::KB_RIGHT))
+		{
+			position_spieler_x = position_spieler_x + 3;
 		}
-		else {
-			accel -= 0.00002;
+		if (input().down(Gosu::KB_LEFT))
+		{
+			position_spieler_x = position_spieler_x - 3;
 		}
-
-		// Maximale Beschleunigung
-		accel = Gosu::clamp(accel, 0.0, 0.0001);
-
-		// Geschwindigkeit wird in Flugrichtung geändert
-		speed += Vektor2d::from_angle(rot, accel);
-
-
-		gravity = Vektor2d();
-
-		// Planeten ziehen Raumschiff an
-		for (auto planet : planets) {
-
-			// Entfernung im Quadrat
-			double dist = (pos - planet.pos).length_squared();
-
-			// Winkel des Vektors vom Raumschiff zum Planet
-			double angle = pos.angle(planet.pos);
-
-			// Anziehungskraft
-			double pull = planet.mass / dist;
-
-			// Kollision
-			if (dist < 1000) {
-				speed = Vektor2d::from_angle(angle, pull);
-				break;
+		if (input().down(Gosu::KB_UP))
+		{
+			int zwischenspeicher = position_spieler_y;
+			while (position_spieler_y > zwischenspeicher - 10)
+			{
+				position_spieler_y = position_spieler_y - 2;
 			}
-			gravity += Vektor2d::from_angle(angle, pull);
+			position_spieler_y = zwischenspeicher;
 		}
 
-		speed += gravity;
+		if ((position_spieler_x > 450 || position_spieler_x < 350) && (position_spieler_y >= 200) && (position_spieler_y < 600))
+		{
+			position_spieler_y = position_spieler_y + 10;	
+		}
 
-		// Raumschiff in Richtung Mauszeiger drehen
-		double angle = pos.angle({ input().mouse_x(), input().mouse_y() });
-		rot -= Gosu::angle_diff(angle, rot) / 36.0;
+		cout << position_spieler_x << "\t" << position_spieler_y << endl;
+	
 	}
 };
 
