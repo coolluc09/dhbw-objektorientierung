@@ -76,7 +76,7 @@ public:
 		{
 			position_spieler_x = position_spieler_x - 3;
 		}
-		if (input().down(Gosu::KB_UP))
+	/*	if (input().down(Gosu::KB_UP))
 		{
 			int zwischenspeicher = position_spieler_y;
 			while (position_spieler_y > zwischenspeicher - 10)
@@ -84,7 +84,7 @@ public:
 				position_spieler_y = position_spieler_y - 2;
 			}
 			position_spieler_y = zwischenspeicher;
-		}
+		}*/
 
 		if ((position_spieler_x > 450 || position_spieler_x < 350) && (position_spieler_y >= 200) && (position_spieler_y < 600))
 		{
