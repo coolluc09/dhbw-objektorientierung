@@ -147,7 +147,6 @@ int geschwindigkeit_y(int sprunghoehe)
 int geschwindigkeit_in_y_richtung = geschwindigkeit_y(sprunghoehe);
 
 
-
 class GameWindow : public Gosu::Window
 {
 public:
