@@ -117,6 +117,18 @@ struct Spieler
 	}
 
 
+	void reset_nach_out_of_map()
+	{
+		if (position_spieler_y >= 740)
+		{
+			lebensanzahl = lebensanzahl - 1;
+			position_spieler_x = 200;
+			position_spieler_y = 600;
+		}
+	}
+
+
+
 	Spieler(int position_x, int position_y, const Gosu::Image& blick_rechts, const Gosu::Image& blick_links,
 		const Gosu::Image& springen_rechts, const Gosu::Image& springen_links)
 		//: position_spieler_x(position_x), position_spieler_y(position_y)
@@ -213,29 +225,16 @@ public:
 		set_caption("Benjamin und Luca");
 	}
 
-	//bool auf_plattform(vector<Plattform> plattformen, Spieler spieler)
-	//{
-	//	for (int i = 0; i <= 3; i++)
-	//	{
-	//		if (spieler.position_spieler_x >= plattformen.at(i).links_x && spieler.position_spieler_x <= plattformen.at(i).rechts_x)
-	//		{
-	//			if (spieler.position_spieler_y >= (plattformen.at(i).unten_y - 10))
-	//			{
-	//				spieler.plattform_nr = i;
-	//				return true;
-	//			}
-	//		}
-	//	}
-
-	//}
 
 
 	void bewegung_spieler(Spieler& spieler, Gosu::ButtonName oben, Gosu::ButtonName rechts, Gosu::ButtonName links, vector<Plattform> plattformen)
 	{
+		//Abfrage auf welcher Plattform sich der spieler befindet: 0-linke, 1-rechte, 2-obere, 3-Haupt Plattform
+		//Wenn sich der Spieler auf keiner Plattform befindet wir als plattform_nr 4 gespeichert, was später bei der y-Bewegung abgefragt wird
 		for (int i = 0; i <= 3; i++)
 		{
 
-				if (spieler.position_spieler_y <= (plattformen.at(i).oben_y) && spieler.position_spieler_y >= (plattformen.at(i).oben_y - 20))
+				if (spieler.position_spieler_y <= (plattformen.at(i).oben_y) && spieler.position_spieler_y >= (plattformen.at(i).oben_y - 40))
 				{
 					if (spieler.position_spieler_x >= plattformen.at(i).links_x && spieler.position_spieler_x <= plattformen.at(i).rechts_x)
 					{
@@ -288,27 +287,43 @@ public:
 
 
 		//Springen
+		//Wenn der Spieler auf einer Plattform ist wird nachfolgend ausgeführt.
 		if (spieler.plattform_nr <= 3)
 		{
+			//oben Taste wird betätigt und die Beschleunigung des Spielers ist 0 -> er steht auf einer Plattform
 			if (input().down(oben) && (spieler.beschleunigung_spieler_y == 0))
 			{
-				spieler.geschwindigkeit_spieler_y = -geschwindigkeit_in_y_richtung;
+				spieler.geschwindigkeit_spieler_y = -geschwindigkeit_in_y_richtung;			//setze Y-Geschwindigkeit auf den in der geschwindigkeit_y Funktion, durch angabe der maximalen Sprunghöhe, errechneten Wert.
 			}
+
+			//Ist der Spieler auf einer Plattform und die Springen-Taste wird nicht betätigt, so wird die aktuelle Y-Geschwindigkeit auf 0 gesetzt und der Y-Wert auf den oberen Y-Wert der Plattform.
+			//Es wird bewusst abgefragt ob die Y-Position des Spielers >= der der Plattformoberfläche ist, da diese Funktion nur begrenzt pro Sekunde aufgerufen wird, kann es passiere, dass der Spieler in der Plattform ist.
 			if (spieler.position_spieler_y >= plattformliste.at(spieler.plattform_nr).oben_y && !input().down(oben))
 			{
 				spieler.geschwindigkeit_spieler_y = 0;
 				spieler.position_spieler_y = plattformliste.at(spieler.plattform_nr).oben_y;
 			}
+
+			//Ist der Spieler auf einer Plattform und die Springen-Taste wird betätigt, so wird die aktuelle Y-Geschwindigkeit auf 0, sodass die Figur nicht in der Plattform drin ist.
+			if (spieler.position_spieler_y >= plattformliste.at(spieler.plattform_nr).oben_y && input().down(oben))
+			{
+				spieler.position_spieler_y = plattformliste.at(spieler.plattform_nr).oben_y;
+			}
+
+			//Ist der Spieler auf einer Plattform so wird seine Beschleunigung 0 gesetzt und somit das entsprechende Bild geladen.
 			if (spieler.position_spieler_y >= plattformliste.at(spieler.plattform_nr).oben_y)
 			{
 				spieler.beschleunigung_spieler_y = 0;
 			}
+
+			//Else ist hier, der Spieler ist über einer Plattform in der Luft -> seine Y-Beschleunigung Richtung Boden wird auf 1 gesetzt und seine Y-Geschwindigkeit mit der Beschleunigung addiert.
 			else
 			{
 				spieler.beschleunigung_spieler_y = 1;
 				spieler.geschwindigkeit_spieler_y = spieler.geschwindigkeit_spieler_y + spieler.beschleunigung_spieler_y;
 			}
 		}
+		//ist der Spieler auf keiner Plattform (also irgendwo in der Luft), so wird er in y Richtung beschleunigt und fällt hinunter, bis er auf einer Plattform ist
 		else
 		{
 			spieler.beschleunigung_spieler_y = 1;
@@ -321,12 +336,6 @@ public:
 	//Abstand der Spieler
 	double abstand_spieler_x;
 	double abstand_spieler_y;
-
-	//Leben und Lebensanzahl der Spieler
-	int leben_spieler_1 = leben_anfang;
-	int leben_spieler_2 = leben_anfang;
-	int lebensanzahl_spieler_1 = lebensanzahl_anfang;
-	int lebensanzahl_spieler_2 = lebensanzahl_anfang;
 
 
 
@@ -346,8 +355,8 @@ public:
 
 		text_spieler_1.draw("Spieler 1", 20, 20, 0.0, 1, 1, Gosu::Color::RED);
 		text_spieler_2.draw(" Spieler 2", 680, 20, 0.0, 1, 1, Gosu::Color::RED);
-		anzeige_leben_spieler_1.draw(to_string(leben_spieler_1), 20, 50, 0.0, 1, 1, Gosu::Color::RED);
-		anzeige_leben_spieler_2.draw(to_string(leben_spieler_2), 680, 50, 0.0, 1, 1, Gosu::Color::RED);
+		anzeige_leben_spieler_1.draw(to_string(spieler_1.lebensanzahl), 20, 50, 0.0, 1, 1, Gosu::Color::RED);
+		anzeige_leben_spieler_2.draw(to_string(spieler_2.lebensanzahl), 680, 50, 0.0, 1, 1, Gosu::Color::RED);
 
 
 		spieler_1.draw();
@@ -364,10 +373,15 @@ public:
 			Window::close();
 		}
 
-		//auf_plattform(plattformliste, spieler_1);
+
 
 		bewegung_spieler(spieler_1, Gosu::KB_UP, Gosu::KB_RIGHT, Gosu::KB_LEFT, plattformliste);
 		bewegung_spieler(spieler_2, Gosu::KB_W, Gosu::KB_D, Gosu::KB_A, plattformliste);
+
+
+		spieler_1.reset_nach_out_of_map();
+		spieler_2.reset_nach_out_of_map();
+
 
 
 		// Abstandsmessung der zwei Spieler
