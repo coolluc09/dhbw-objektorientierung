@@ -187,22 +187,26 @@ public:
 		//Spieler spieler_1 = Spieler(1, 600, spieler_bild_1, spieler_bild_1_links, spieler_bild_1_springen_rechts, spieler_bild_1_springen_links);
 		//Spieler spieler_2 = Spieler(800, 600, spieler_bild_2, spieler_bild_2_links, spieler_bild_2_springen_rechts, spieler_bild_2_springen_links);
 
+		//Spieler 1 mit Werten belegen
 		spieler_1.position_spieler_x = 15;
 		spieler_1.position_spieler_y = 600;
 		spieler_1.blick_spieler_rechts = true;
 		spieler_1.blick_spieler_links = false;
 		spieler_1.set_spielfigur(spieler_bild_1, spieler_bild_1_links, spieler_bild_1_springen_rechts, spieler_bild_1_springen_links);
 
+		//Spieler 2 mit Werten belegen
 		spieler_2.position_spieler_x = 985;
 		spieler_2.position_spieler_y = 600;
 		spieler_2.blick_spieler_rechts = false;
 		spieler_2.blick_spieler_links = true;
 		spieler_2.set_spielfigur(spieler_bild_2, spieler_bild_2_links, spieler_bild_2_springen_rechts, spieler_bild_2_springen_links);
 
+		//Plattformen erstellen
 		plattformliste.push_back(Plattform(plattform, 300, 400, 150, 20));
 		plattformliste.push_back(Plattform(plattform, 700, 400, 150, 20));
 		plattformliste.push_back(Plattform(plattform, 500, 200, 150, 20));
 		plattformliste.push_back(Plattform(hauptplattform, 500, 650, 700, 100));
+
 
 		set_caption("Benjamin und Luca");
 	}
@@ -212,11 +216,11 @@ public:
 
 	void bewegung_spieler(Spieler& spieler, Gosu::ButtonName oben, Gosu::ButtonName rechts, Gosu::ButtonName links)
 	{
-
+		//Position des Spielers aktualisieren
 		spieler.position_spieler_x = spieler.position_spieler_x + spieler.geschwindigkeit_spieler_x;
 		spieler.position_spieler_y = spieler.position_spieler_y + spieler.geschwindigkeit_spieler_y;
 
-		// Spielfigur kann nicht über den Rand hinauslaufen
+		//Spielfigur kann nicht über den Rand hinauslaufen
 		if (spieler.position_spieler_x <= 15)
 		{
 			spieler.position_spieler_x = 15;
@@ -226,29 +230,32 @@ public:
 			spieler.position_spieler_x = 985;
 		}
 
-
-		if (input().down(rechts))					//nach Rechts laufen
+		//nach Rechts laufen
+		if (input().down(rechts))					
 		{
 			spieler.geschwindigkeit_spieler_x = 5;
 			spieler.blick_spieler_rechts = true;
 			spieler.blick_spieler_links = false;
 		}
 
-		if (input().down(links))					//nach Links laufen
+		//nach Links laufen
+		if (input().down(links))					
 		{
 			spieler.geschwindigkeit_spieler_x = -5;
 			spieler.blick_spieler_rechts  = false;
 			spieler.blick_spieler_links  = true;
 		}
 
-		// stehen bleiben, wenn keine Richtung eingegeben wird bzw. wenn beide Richtungen betätigt
+		//stehen bleiben, wenn keine Richtung eingegeben wird bzw. wenn beide Richtungen betätigt
 		if ((!input().down(rechts) && !input().down(links)) || (input().down(rechts) && input().down(links)))
 		{
 			spieler.geschwindigkeit_spieler_x = 0;
 		}
 
 
-		if (input().down(oben) && (spieler.beschleunigung_spieler_y == 0))					//Springen
+		//Springen
+
+		if (input().down(oben) && (spieler.beschleunigung_spieler_y == 0))					
 		{
 			spieler.geschwindigkeit_spieler_y = -geschwindigkeit_in_y_richtung;
 		}
@@ -309,7 +316,7 @@ public:
 	// Wird 60x pro Sekunde aufgerufen
 	void update() override
 	{
-		// bei betätigen von esc wird das Programm geschlossen
+		//bei betätigen von esc wird das Programm geschlossen
 		if (Window::input().down(Gosu::KB_ESCAPE))
 		{
 			Window::close();
