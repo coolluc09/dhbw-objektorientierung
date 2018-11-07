@@ -2,6 +2,7 @@
 
 #include <Gosu/Gosu.hpp>
 #include <Gosu/AutoLink.hpp>
+#include <Gosu/Window.hpp>
 
 #include <vector>
 #include <string>
@@ -31,7 +32,7 @@ int spieler_min_abstand_x = 10;
 int spieler_min_abstand_y = 42;
 int lebensanzahl_anfang = 3;
 int leben_anfang = 100;
-int sprunghoehe = 325;
+int sprunghoehe = 300;
 
 struct Plattform
 {
@@ -58,9 +59,6 @@ struct Plattform
 	}
 
 };
-
-
-
 
 
 struct Spieler
@@ -150,6 +148,8 @@ int geschwindigkeit_in_y_richtung = geschwindigkeit_y(sprunghoehe);
 
 class GameWindow : public Gosu::Window
 {
+	//bool spiel_fortsetzen = true;
+
 	Spieler spieler_1;
 	Spieler spieler_2;
 	vector<Plattform> plattformliste;
@@ -164,6 +164,7 @@ public:
 	Gosu::Image spieler_bild_1_springen_links;
 	Gosu::Image spieler_bild_2_springen_links;
 	Gosu::Image plattform;
+	Gosu::Image hauptplattform;
 	Gosu::Image hintergrund;
 
 	Gosu::Font text_spieler_1, text_spieler_2, anzeige_leben_spieler_1, anzeige_leben_spieler_2;
@@ -179,28 +180,31 @@ public:
 		spieler_bild_1_springen_links("Luigi_Figur_Springen_Links.png"),
 		spieler_bild_2_springen_links("Luigi_Figur_Springen_Links.png"),
 		plattform("Plattform.png"),
+		hauptplattform("Hauptplattform.png"),
 		hintergrund("Hintergrund_2.jpg"),
 		text_spieler_1(30), text_spieler_2(30), anzeige_leben_spieler_1(30), anzeige_leben_spieler_2(30)
 	{
-
 		//Spieler spieler_1 = Spieler(1, 600, spieler_bild_1, spieler_bild_1_links, spieler_bild_1_springen_rechts, spieler_bild_1_springen_links);
 		//Spieler spieler_2 = Spieler(800, 600, spieler_bild_2, spieler_bild_2_links, spieler_bild_2_springen_rechts, spieler_bild_2_springen_links);
 
-
-		spieler_1.position_spieler_x = 0;
+		spieler_1.position_spieler_x = 15;
 		spieler_1.position_spieler_y = 600;
+		spieler_1.blick_spieler_rechts = true;
+		spieler_1.blick_spieler_links = false;
 		spieler_1.set_spielfigur(spieler_bild_1, spieler_bild_1_links, spieler_bild_1_springen_rechts, spieler_bild_1_springen_links);
 
-		spieler_2.position_spieler_x = 800;
+		spieler_2.position_spieler_x = 985;
 		spieler_2.position_spieler_y = 600;
+		spieler_2.blick_spieler_rechts = false;
+		spieler_2.blick_spieler_links = true;
 		spieler_2.set_spielfigur(spieler_bild_2, spieler_bild_2_links, spieler_bild_2_springen_rechts, spieler_bild_2_springen_links);
 
-		plattformliste.push_back(Plattform(plattform, 300, 350, 150, 20));
-		plattformliste.push_back(Plattform(plattform, 700, 350, 150, 20));
-		plattformliste.push_back(Plattform(plattform, 500, 150, 150, 20));
+		plattformliste.push_back(Plattform(plattform, 300, 400, 150, 20));
+		plattformliste.push_back(Plattform(plattform, 700, 400, 150, 20));
+		plattformliste.push_back(Plattform(plattform, 500, 200, 150, 20));
+		plattformliste.push_back(Plattform(hauptplattform, 500, 650, 700, 100));
 
-
-		//set_caption("Gosu Tutorial Game mit Git");
+		set_caption("Benjamin und Luca");
 	}
 
 
@@ -211,6 +215,17 @@ public:
 
 		spieler.position_spieler_x = spieler.position_spieler_x + spieler.geschwindigkeit_spieler_x;
 		spieler.position_spieler_y = spieler.position_spieler_y + spieler.geschwindigkeit_spieler_y;
+
+		// Spielfigur kann nicht über den Rand hinauslaufen
+		if (spieler.position_spieler_x <= 15)
+		{
+			spieler.position_spieler_x = 15;
+		}
+		else if (spieler.position_spieler_x >= 985)
+		{
+			spieler.position_spieler_x = 985;
+		}
+
 
 		if (input().down(rechts))					//nach Rechts laufen
 		{
@@ -294,20 +309,14 @@ public:
 	// Wird 60x pro Sekunde aufgerufen
 	void update() override
 	{
-
+		// bei betätigen von esc wird das Programm geschlossen
+		if (Window::input().down(Gosu::KB_ESCAPE))
+		{
+			Window::close();
+		}
 
 		bewegung_spieler(spieler_1, Gosu::KB_UP, Gosu::KB_RIGHT, Gosu::KB_LEFT);
 		bewegung_spieler(spieler_2, Gosu::KB_W, Gosu::KB_D, Gosu::KB_A);
-
-		//if (position_spieler_1_x <= 0)
-		//{
-		//	position_spieler_1_x = 0;
-		//}
-		//else if(position_spieler_1_x >= 800)
-		//{
-		//	position_spieler_1_x = 800;
-		//}
-
 
 
 		// Abstandsmessung der zwei Spieler
@@ -353,8 +362,7 @@ public:
 */
 
 
-
-
+		
 
 //#########################################################################################
 
@@ -368,5 +376,5 @@ int main()
 {
 	GameWindow window;
 	window.show();
-	
+
 }
