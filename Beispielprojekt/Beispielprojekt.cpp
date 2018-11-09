@@ -19,20 +19,17 @@ using namespace std;
 const double DT = 100.0;
 
 
-//struct Plattform
-//{
-//	int linkes_ende;
-//	int rechtes_end;
-//	int hoehe_oben;
-//	int hoehe_unten;
-//};
-
-
 int spieler_min_abstand_x = 10;
 int spieler_min_abstand_y = 42;
+
 int lebensanzahl_anfang = 3;
 int leben_anfang = 100;
 int sprunghoehe = 300;
+
+int start_position_spieler_1_x = 200;
+int start_position_spieler_2_x = 800;
+int start_position_spieler_1_y = 600;
+int start_position_spieler_2_y = 600;
 
 struct Plattform
 {
@@ -65,12 +62,13 @@ struct Spieler
 {
 	int plattform_nr;
 
-//private:
+	int start_position_x;
+	int start_position_y;
 	//Name des Spielers
 	string name;
 	//Positionen des Spielers
-	int position_spieler_x;
-	int position_spieler_y;
+	int position_spieler_x = start_position_x;
+	int position_spieler_y = start_position_y;
 	//Geschwindigkeit des Spielers
 	int geschwindigkeit_spieler_x;
 	int geschwindigkeit_spieler_y;
@@ -79,7 +77,6 @@ struct Spieler
 	int beschleunigung_spieler_y;
 	//Blickrichtung des Spielers
 	bool blick_spieler_rechts;
-	bool blick_spieler_links;
 	//Leben und Lebensanzahl der Spieler
 	int leben_spieler = leben_anfang;
 	int lebensanzahl = lebensanzahl_anfang;
@@ -97,19 +94,19 @@ struct Spieler
 	
 	void draw()
 	{
-		if (blick_spieler_rechts && !blick_spieler_links && beschleunigung_spieler_y == 0)
+		if (blick_spieler_rechts && beschleunigung_spieler_y == 0)
 		{
 			spielfigur.at(0).draw_rot(position_spieler_x, position_spieler_y, 0.0, 0.0, 0.5, 1.0, 1.0, 1.0);
 		}
-		else if(blick_spieler_links && !blick_spieler_rechts && beschleunigung_spieler_y == 0)
+		else if(blick_spieler_rechts == false && beschleunigung_spieler_y == 0)
 		{
 			spielfigur.at(1).draw_rot(position_spieler_x, position_spieler_y, 0.0, 0.0, 0.5, 1.0, 1.0, 1.0);
 		}
-		else if (blick_spieler_rechts && !blick_spieler_links && beschleunigung_spieler_y != 0)
+		else if (blick_spieler_rechts && beschleunigung_spieler_y != 0)
 		{
 			spielfigur.at(2).draw_rot(position_spieler_x, position_spieler_y, 0.0, 0.0, 0.5, 1.0, 1.0, 1.0);
 		}
-		else if (blick_spieler_links && !blick_spieler_rechts && beschleunigung_spieler_y != 0)
+		else if (blick_spieler_rechts == false && beschleunigung_spieler_y != 0)
 		{
 			spielfigur.at(3).draw_rot(position_spieler_x, position_spieler_y, 0.0, 0.0, 0.5, 1.0, 1.0, 1.0);
 		}
@@ -117,30 +114,23 @@ struct Spieler
 	}
 
 
-	void reset_nach_out_of_map()
+	void rewspan_nach_out_of_map()
 	{
-		if (position_spieler_y >= 740)
+		if (position_spieler_y >= 900)
 		{
 			lebensanzahl = lebensanzahl - 1;
-			position_spieler_x = 200;
-			position_spieler_y = 600;
+			leben_spieler = leben_anfang;
+
+			position_spieler_x = start_position_x;
+			position_spieler_y = start_position_y;
 		}
 	}
 
-
-
-	Spieler(int position_x, int position_y, const Gosu::Image& blick_rechts, const Gosu::Image& blick_links,
-		const Gosu::Image& springen_rechts, const Gosu::Image& springen_links)
-		//: position_spieler_x(position_x), position_spieler_y(position_y)
+	Spieler(int position_x, int position_y, bool nach_rechts_schauen, const Gosu::Image blick_rechts, const Gosu::Image blick_links, const Gosu::Image springen_rechts, const Gosu::Image springen_links)
+		: start_position_x(position_x), start_position_y(position_y), blick_spieler_rechts(nach_rechts_schauen)
 	{
-		position_spieler_x = position_x;
-		position_spieler_y = position_y;
 		set_spielfigur(blick_rechts, blick_links, springen_rechts, springen_links);
 	}
-	Spieler() 
-	{
-
-	};
 };
 
 
@@ -162,21 +152,12 @@ int geschwindigkeit_in_y_richtung = geschwindigkeit_y(sprunghoehe);
 
 class GameWindow : public Gosu::Window
 {
-	//bool spiel_fortsetzen = true;
-	//int plattform_nr = 3;
+	int modus = 0;
 	Spieler spieler_1;
 	Spieler spieler_2;
 	vector<Plattform> plattformliste;
 
 public:
-	Gosu::Image spieler_bild_1;
-	Gosu::Image spieler_bild_2;
-	Gosu::Image spieler_bild_1_links;
-	Gosu::Image spieler_bild_2_links;
-	Gosu::Image spieler_bild_1_springen_rechts;
-	Gosu::Image spieler_bild_2_springen_rechts;
-	Gosu::Image spieler_bild_1_springen_links;
-	Gosu::Image spieler_bild_2_springen_links;
 	Gosu::Image plattform;
 	Gosu::Image hauptplattform;
 	Gosu::Image hintergrund;
@@ -185,35 +166,15 @@ public:
 
 	GameWindow()
 		: Window(1000, 700),
-		spieler_bild_1("Mario_Figur_Rechtsblick.png"),
-		spieler_bild_2("Luigi_Figur_Rechtsblick.png"),
-		spieler_bild_1_links("Mario_Figur_Linksblick.png"),
-		spieler_bild_2_links("Luigi_Figur_Linksblick.png"),
-		spieler_bild_1_springen_rechts("Luigi_Figur_Springen_Rechts.png"),
-		spieler_bild_2_springen_rechts("Luigi_Figur_Springen_Rechts.png"),
-		spieler_bild_1_springen_links("Luigi_Figur_Springen_Links.png"),
-		spieler_bild_2_springen_links("Luigi_Figur_Springen_Links.png"),
 		plattform("Plattform.png"),
 		hauptplattform("Hauptplattform.png"),
 		hintergrund("Hintergrund_2.jpg"),
+		spieler_1(start_position_spieler_1_x, start_position_spieler_1_y, true, Gosu::Image("Mario_Figur_Rechtsblick.png"), Gosu::Image("Mario_Figur_Linksblick.png"), Gosu::Image("Luigi_Figur_Springen_Rechts.png"), Gosu::Image("Luigi_Figur_Springen_Links.png")),
+		spieler_2(start_position_spieler_2_x, start_position_spieler_2_y, false, Gosu::Image("Luigi_Figur_Rechtsblick.png"), Gosu::Image("Luigi_Figur_Linksblick.png"), Gosu::Image("Luigi_Figur_Springen_Rechts.png"), Gosu::Image("Luigi_Figur_Springen_Links.png")),
 		text_spieler_1(30), text_spieler_2(30), anzeige_leben_spieler_1(30), anzeige_leben_spieler_2(30)
 	{
-		//Spieler spieler_1 = Spieler(1, 600, spieler_bild_1, spieler_bild_1_links, spieler_bild_1_springen_rechts, spieler_bild_1_springen_links);
-		//Spieler spieler_2 = Spieler(800, 600, spieler_bild_2, spieler_bild_2_links, spieler_bild_2_springen_rechts, spieler_bild_2_springen_links);
-
-		//Spieler 1 mit Werten belegen
-		spieler_1.position_spieler_x = 235;
-		spieler_1.position_spieler_y = 600;
-		spieler_1.blick_spieler_rechts = true;
-		spieler_1.blick_spieler_links = false;
-		spieler_1.set_spielfigur(spieler_bild_1, spieler_bild_1_links, spieler_bild_1_springen_rechts, spieler_bild_1_springen_links);
-
-		//Spieler 2 mit Werten belegen
-		spieler_2.position_spieler_x = 735;
-		spieler_2.position_spieler_y = 600;
-		spieler_2.blick_spieler_rechts = false;
-		spieler_2.blick_spieler_links = true;
-		spieler_2.set_spielfigur(spieler_bild_2, spieler_bild_2_links, spieler_bild_2_springen_rechts, spieler_bild_2_springen_links);
+		spieler_1.name = "Mario";
+		spieler_2.name = "Luigi";
 
 		//Plattformen erstellen
 		plattformliste.push_back(Plattform(plattform, 300, 400, 250, 20));
@@ -227,16 +188,16 @@ public:
 
 
 
-	void bewegung_spieler(Spieler& spieler, Gosu::ButtonName oben, Gosu::ButtonName rechts, Gosu::ButtonName links, vector<Plattform> plattformen)
+	void bewegung_spieler(Spieler& spieler, Gosu::ButtonName oben, Gosu::ButtonName rechts, Gosu::ButtonName links)
 	{
 		//Abfrage auf welcher Plattform sich der spieler befindet: 0-linke, 1-rechte, 2-obere, 3-Haupt Plattform
 		//Wenn sich der Spieler auf keiner Plattform befindet wir als plattform_nr 4 gespeichert, was später bei der y-Bewegung abgefragt wird
 		for (int i = 0; i <= 3; i++)
 		{
 
-				if (spieler.position_spieler_y <= (plattformen.at(i).oben_y) && spieler.position_spieler_y >= (plattformen.at(i).oben_y - 40))
+				if (spieler.position_spieler_y <= (plattformliste.at(i).oben_y) && spieler.position_spieler_y >= (plattformliste.at(i).oben_y - 40))
 				{
-					if (spieler.position_spieler_x >= plattformen.at(i).links_x && spieler.position_spieler_x <= plattformen.at(i).rechts_x)
+					if (spieler.position_spieler_x >= plattformliste.at(i).links_x && spieler.position_spieler_x <= plattformliste.at(i).rechts_x)
 					{
 						spieler.plattform_nr = i;
 						break;
@@ -268,7 +229,6 @@ public:
 		{
 			spieler.geschwindigkeit_spieler_x = 5;
 			spieler.blick_spieler_rechts = true;
-			spieler.blick_spieler_links = false;
 		}
 
 		//nach Links laufen
@@ -276,7 +236,6 @@ public:
 		{
 			spieler.geschwindigkeit_spieler_x = -5;
 			spieler.blick_spieler_rechts  = false;
-			spieler.blick_spieler_links  = true;
 		}
 
 		//stehen bleiben, wenn keine Richtung eingegeben wird bzw. wenn beide Richtungen betätigt
@@ -375,12 +334,12 @@ public:
 
 
 
-		bewegung_spieler(spieler_1, Gosu::KB_UP, Gosu::KB_RIGHT, Gosu::KB_LEFT, plattformliste);
-		bewegung_spieler(spieler_2, Gosu::KB_W, Gosu::KB_D, Gosu::KB_A, plattformliste);
+		bewegung_spieler(spieler_1, Gosu::KB_UP, Gosu::KB_RIGHT, Gosu::KB_LEFT);
+		bewegung_spieler(spieler_2, Gosu::KB_W, Gosu::KB_D, Gosu::KB_A);
 
 
-		spieler_1.reset_nach_out_of_map();
-		spieler_2.reset_nach_out_of_map();
+		spieler_1.rewspan_nach_out_of_map();
+		spieler_2.rewspan_nach_out_of_map();
 
 
 
