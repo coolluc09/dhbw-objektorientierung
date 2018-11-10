@@ -187,7 +187,7 @@ struct Spieler
 
 	void rewspan()
 	{
-		if (position_spieler_y >= 1000 || leben_spieler == 0)
+		if (position_spieler_y >= 1000 || leben_spieler <= 0)
 		{
 			leben_spieler = leben_anfang;
 			lebensanzahl = lebensanzahl - 1;
@@ -263,7 +263,7 @@ public:
 		patrone_spieler_1("Mario_geschoss.png"),
 		patrone_spieler_2("Luigi_geschoss.png"),
 		startbildschirm("Startbildschirm.png"), endbildschirm_unentschieden("Endbildschirm_unentschieden.png"), endbildschirm_mario("Endbildschirm_mario.png"), endbildschirm_luigi("Endbildschirm_luigi.png"),
-		spieler_1(start_position_spieler_1_x, start_position_spieler_1_y, true, Gosu::Image("Mario_Figur_Rechtsblick.png"), Gosu::Image("Mario_Figur_Linksblick.png"), Gosu::Image("Luigi_Figur_Springen_Rechts.png"), Gosu::Image("Luigi_Figur_Springen_Links.png")),
+		spieler_1(start_position_spieler_1_x, start_position_spieler_1_y, true, Gosu::Image("Mario_Figur_Rechtsblick.png"), Gosu::Image("Mario_Figur_Linksblick.png"), Gosu::Image("Mario_Figur_Springen_Rechts.png"), Gosu::Image("Mario_Figur_Springen_Links.png")),
 		spieler_2(start_position_spieler_2_x, start_position_spieler_2_y, false, Gosu::Image("Luigi_Figur_Rechtsblick.png"), Gosu::Image("Luigi_Figur_Linksblick.png"), Gosu::Image("Luigi_Figur_Springen_Rechts.png"), Gosu::Image("Luigi_Figur_Springen_Links.png")),
 		text_spieler_1(30), text_spieler_2(30), anzeige_leben_spieler_1(30), anzeige_leben_spieler_2(30)
 	{
@@ -365,7 +365,7 @@ public:
 		}
 
 		//Position des Spielers aktualisieren
-		spieler.position_spieler_x = spieler.position_spieler_x + spieler.geschwindigkeit_spieler_x;
+		spieler.position_spieler_x = spieler.position_spieler_x + spieler.geschwindigkeit_spieler_x + spieler.beschleunigung_spieler_x;
 		spieler.position_spieler_y = spieler.position_spieler_y + spieler.geschwindigkeit_spieler_y;
 
 		//Spielfigur kann nicht über den Rand hinauslaufen
@@ -445,7 +445,38 @@ public:
 
 	}
 
+	void spieler_stossen_sich_ab(Spieler& spieler_1, Spieler& spieler_2)
+	{
+		int abstand_spieler_x = sqrt(pow((spieler_1.position_spieler_x - spieler_2.position_spieler_x), 2));
+		int abstand_spieler_y = sqrt(pow((spieler_1.position_spieler_y - spieler_2.position_spieler_y), 2));
 
+		if (abstand_spieler_x <= spieler_min_abstand_x && abstand_spieler_y <= spieler_min_abstand_y)
+		{
+		if (spieler_1.position_spieler_x > spieler_2.position_spieler_x)
+		{
+			spieler_1.beschleunigung_spieler_x = 100 ;
+			spieler_2.beschleunigung_spieler_x = -100;
+		}
+		else
+		{
+			spieler_1.beschleunigung_spieler_x = -100;
+			spieler_2.beschleunigung_spieler_x = 100;
+		}
+		if (spieler_1.leben_spieler >= 45)
+		{
+			spieler_1.leben_spieler = spieler_1.leben_spieler - 5;
+		}
+		if (spieler_2.leben_spieler >= 45)
+		{
+			spieler_2.leben_spieler = spieler_2.leben_spieler - 5;
+		}
+		}
+		else
+		{
+			spieler_1.beschleunigung_spieler_x = 0;
+			spieler_2.beschleunigung_spieler_x = 0;
+		}
+	}
 
 
 
@@ -540,8 +571,7 @@ public:
 				schiessen(spieler_1, Gosu::KB_RIGHT_ALT, patrone_spieler_1, spieler_1.zaehler, spieler_1.schiessen_moeglich);
 				schiessen(spieler_2, Gosu::KB_SPACE, patrone_spieler_2, spieler_2.zaehler, spieler_2.schiessen_moeglich);
 
-				//spieler_1.update_geschosse();
-				//spieler_2.update_geschosse();
+				spieler_stossen_sich_ab(spieler_1, spieler_2);
 				getroffen_von_geschoss(spieler_1, spieler_2);
 
 				spieler_1.rewspan();
@@ -578,54 +608,7 @@ public:
 			default:
 				modus = 0;
 				break;
-		}
-
-
-
-		// Abstandsmessung der zwei Spieler
-
-		/*abstand_spieler_x = sqrt(pow((position_spieler_1_x - position_spieler_2_x), 2));
-		abstand_spieler_y = sqrt(pow((position_spieler_1_y - position_spieler_2_y), 2));
-
-		if (abstand_spieler_x <= spieler_min_abstand_x && abstand_spieler_y <= spieler_min_abstand_y)
-		{
-			if (position_spieler_1_x > position_spieler_2_x)
-			{
-				beschleunigung_spieler_1_x = 100 * int(200 / leben_spieler_1);
-				beschleunigung_spieler_2_x = -100 * int(200 / leben_spieler_1);
-				if (leben_spieler_1 >= 35)
-				{
-					leben_spieler_1 = leben_spieler_1 - 5;
-				}
-				if (leben_spieler_2 >= 35)
-				{
-					leben_spieler_2 = leben_spieler_2 - 5;
-				}
-			}
-			else
-			{
-				beschleunigung_spieler_1_x = -100 * int(90 / leben_spieler_1);
-				beschleunigung_spieler_2_x = 100 * int(90 / leben_spieler_1);
-				if (leben_spieler_1 >= 35)
-				{
-					leben_spieler_1 = leben_spieler_1 - 5;
-				}
-				if (leben_spieler_2 >= 35)
-				{
-					leben_spieler_2 = leben_spieler_2 - 5;
-				}
-			}
-
-		}
-		else
-		{
-			beschleunigung_spieler_1_x = 0;
-			beschleunigung_spieler_2_x = 0;
-		}
-*/
-
-
-		
+		}	
 
 //#########################################################################################
 
