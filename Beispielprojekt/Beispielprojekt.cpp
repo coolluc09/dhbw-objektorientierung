@@ -25,6 +25,8 @@ int spieler_min_abstand_y = 42;
 int lebensanzahl_anfang = 3;
 int leben_anfang = 100;
 int sprunghoehe = 300;
+int geschoss_geschwindigkeit = 10;
+
 
 int start_position_spieler_1_x = 200;
 int start_position_spieler_2_x = 800;
@@ -58,10 +60,48 @@ struct Plattform
 };
 
 
+struct Geschoss
+{
+	int position_x;
+	int position_y;
+	int geschwindigkeit_x = geschoss_geschwindigkeit;
+	bool flugrichtung_rechts;
+	bool treffer;
+
+	Gosu::Image bild;
+
+	void flugbahn()
+	{
+		if (flugrichtung_rechts)
+		{
+			position_x = position_x + geschwindigkeit_x;
+		}
+		else
+		{
+			position_x = position_x - geschwindigkeit_x;
+		}
+	}
+
+	Geschoss(int x_position, int y_position, bool rechts_flugrichtung, const Gosu::Image geschoss_bild)
+		:position_x(x_position), position_y(y_position-30), flugrichtung_rechts(rechts_flugrichtung), bild(geschoss_bild)
+	{
+		if (rechts_flugrichtung)
+		{
+			position_x = position_x + 15;			//Damit die Geschosse nicht in der Spielfigur starten wird die Hälfte der Breite der Spielfigur (15 Pixel) auf die Startposition drauf addiert.
+		}
+		else
+		{
+			position_x = position_x - 15;			//wie oben nur dass hier die 15 Pixel abgezogen werden da blick nach links ist.
+		}
+
+	}
+
+
+};
+
+
 struct Spieler
 {
-	int plattform_nr;
-
 	int start_position_x;
 	int start_position_y;
 	//Name des Spielers
@@ -80,8 +120,16 @@ struct Spieler
 	//Leben und Lebensanzahl der Spieler
 	int leben_spieler = leben_anfang;
 	int lebensanzahl = lebensanzahl_anfang;
-
+	//Plattform auf der sich der Spieler befindet
+	int plattform_nr;
+	//Vekto mit den Bildern der Spielfigur
 	vector<Gosu::Image> spielfigur;
+
+	//Vektor mit Geschossen
+	vector<Geschoss> geschosse;
+	//schiessen
+	int zaehler = 0;
+	bool schiessen_moeglich = true;
 
 
 	void set_spielfigur(const Gosu::Image& blick_rechts, const Gosu::Image& blick_links, const Gosu::Image& springen_rechts, const Gosu::Image& springen_links)
@@ -113,17 +161,47 @@ struct Spieler
 
 	}
 
-
-	void rewspan_nach_out_of_map()
+	void draw_geschosse()
 	{
-		if (position_spieler_y >= 900)
+		for (auto it = geschosse.begin(); it != geschosse.end(); it++)
 		{
-			lebensanzahl = lebensanzahl - 1;
-			leben_spieler = leben_anfang;
+			it->bild.draw_rot(it->position_x, it->position_y, 0.0, 0.0, 0.5, 0.5, 1.0, 1.0);
+		}
+	}
 
+	void update_geschosse()
+	{
+		for (auto it = geschosse.begin(); it != geschosse.end(); it++)
+		{
+			it->flugbahn();								//Geschoss bewegt sich in X-Richtung
+			if (it->position_x >= 1010 || it->position_x <= -10 || it->treffer == true)
+			{
+				geschosse.erase(it);					//Geschoss, dass das Spielfeld verlässt wird gelöscht 
+				break;									//Nach dem Löschen ist es wichtig, dass ein break kommt und der Iterator it wieder auf das neue beginn() Element setzt, 
+														// da sonst ein Fehler auftritt da der Iterator nicht erhöht werden kann, da der Iterator des gelöschten Elements auf kein Element im Vektor zeigt.			
+			}
+		}
+	}
+
+
+
+	void rewspan()
+	{
+		if (position_spieler_y >= 1000 || leben_spieler == 0)
+		{
+			leben_spieler = leben_anfang;
+			lebensanzahl = lebensanzahl - 1;
 			position_spieler_x = start_position_x;
 			position_spieler_y = start_position_y;
 		}
+	}
+
+	void neues_spiel()
+	{
+		position_spieler_x = start_position_x;
+		position_spieler_y = start_position_y;
+		lebensanzahl = lebensanzahl_anfang;
+		leben_spieler = leben_anfang;
 	}
 
 	Spieler(int position_x, int position_y, bool nach_rechts_schauen, const Gosu::Image blick_rechts, const Gosu::Image blick_links, const Gosu::Image springen_rechts, const Gosu::Image springen_links)
@@ -132,6 +210,7 @@ struct Spieler
 		set_spielfigur(blick_rechts, blick_links, springen_rechts, springen_links);
 	}
 };
+
 
 
 int geschwindigkeit_y(int sprunghoehe)
@@ -150,17 +229,27 @@ int geschwindigkeit_y(int sprunghoehe)
 int geschwindigkeit_in_y_richtung = geschwindigkeit_y(sprunghoehe);
 
 
+
+
 class GameWindow : public Gosu::Window
 {
 	int modus = 0;
+	int sieger = 0; 
 	Spieler spieler_1;
 	Spieler spieler_2;
 	vector<Plattform> plattformliste;
+	string anzeige_startbildschirm = "RETURN zum starten";
+	string anzeige_endbildschirm;
+	string gewonnen_endbildschirm = "Neues Spiel mit RETURN";
 
 public:
 	Gosu::Image plattform;
 	Gosu::Image hauptplattform;
 	Gosu::Image hintergrund;
+	Gosu::Image patrone_spieler_1;
+	Gosu::Image patrone_spieler_2;
+	Gosu::Font endbildschirm;
+	Gosu::Font startbildschirm;
 
 	Gosu::Font text_spieler_1, text_spieler_2, anzeige_leben_spieler_1, anzeige_leben_spieler_2;
 
@@ -169,10 +258,17 @@ public:
 		plattform("Plattform.png"),
 		hauptplattform("Hauptplattform.png"),
 		hintergrund("Hintergrund_2.jpg"),
+		patrone_spieler_1("Mario_geschoss.png"),
+		patrone_spieler_2("Luigi_geschoss.png"),
 		spieler_1(start_position_spieler_1_x, start_position_spieler_1_y, true, Gosu::Image("Mario_Figur_Rechtsblick.png"), Gosu::Image("Mario_Figur_Linksblick.png"), Gosu::Image("Luigi_Figur_Springen_Rechts.png"), Gosu::Image("Luigi_Figur_Springen_Links.png")),
 		spieler_2(start_position_spieler_2_x, start_position_spieler_2_y, false, Gosu::Image("Luigi_Figur_Rechtsblick.png"), Gosu::Image("Luigi_Figur_Linksblick.png"), Gosu::Image("Luigi_Figur_Springen_Rechts.png"), Gosu::Image("Luigi_Figur_Springen_Links.png")),
-		text_spieler_1(30), text_spieler_2(30), anzeige_leben_spieler_1(30), anzeige_leben_spieler_2(30)
+		text_spieler_1(30), text_spieler_2(30), anzeige_leben_spieler_1(30), anzeige_leben_spieler_2(30),
+		endbildschirm(60),startbildschirm(60)
 	{
+		//Textlänge beim Start berechnen -> später läuft das Programm flüssiger wenn der Text aufgerufen wird, da nicht immer die Länge berechnet wird.
+		startbildschirm.text_width(anzeige_startbildschirm);
+		endbildschirm.text_width(anzeige_endbildschirm);
+
 		spieler_1.name = "Mario";
 		spieler_2.name = "Luigi";
 
@@ -187,6 +283,62 @@ public:
 	}
 
 
+	void schiessen(Spieler& spieler, Gosu::ButtonName schuss, const Gosu::Image bild, int counter, bool schiessen_moeglich)
+	{
+		if (spieler.schiessen_moeglich == false)
+		{
+			spieler.zaehler = spieler.zaehler - 1;
+		}
+		if (spieler.zaehler == 0)
+		{
+			spieler.schiessen_moeglich = true;
+		}
+		if (input().down(schuss) && spieler.schiessen_moeglich == true && spieler.geschosse.size() < 5)
+		{
+			spieler.geschosse.push_back(Geschoss(spieler.position_spieler_x, spieler.position_spieler_y, spieler.blick_spieler_rechts, bild));
+			spieler.schiessen_moeglich = false;
+			spieler.zaehler = 15;					//0,5 sekunden warten, da die Funktion 30 mal die Sekunde aufgerufen wird.
+		}
+
+		//Updaten der Position des Geschosses bzw. schauen ob es gelöscht werden muss
+		spieler.update_geschosse();
+	}
+
+	void getroffen(Spieler& spieler, Geschoss& patrone)
+	{
+		if (patrone.position_x >= spieler.position_spieler_x - 20 && patrone.position_x <= spieler.position_spieler_x + 20
+			&& patrone.position_y >= spieler.position_spieler_y - 65 && patrone.position_y <= spieler.position_spieler_y + 5)
+		{
+			patrone.treffer = true;
+			spieler.leben_spieler = spieler.leben_spieler - 20;				//pro Treffer -20% Leben
+		}
+	}
+
+	void geschoss_trifft_plattform(vector<Plattform> plattformliste, Geschoss& patrone)
+	{
+		for (auto it = plattformliste.begin(); it != plattformliste.end(); it++)
+		{
+			if(patrone.position_x >= it->links_x - 7 && patrone.position_x <= it->rechts_x + 7 
+				&& patrone.position_y <= it->unten_y + 7 && patrone.position_y >= it->oben_y - 7)
+			{
+				patrone.treffer = true;
+			}
+		}
+	}
+
+	void getroffen_von_geschoss(Spieler& spieler_1, Spieler& spieler_2)
+	{
+		for (auto it = spieler_2.geschosse.begin(); it != spieler_2.geschosse.end(); it++)
+		{
+			getroffen(spieler_1, (*it));
+			geschoss_trifft_plattform(plattformliste, (*it));
+		}
+		for (auto it2 = spieler_1.geschosse.begin(); it2 != spieler_1.geschosse.end(); it2++)
+		{
+			getroffen(spieler_2, (*it2));
+			geschoss_trifft_plattform(plattformliste, (*it2));
+		}
+	}
 
 	void bewegung_spieler(Spieler& spieler, Gosu::ButtonName oben, Gosu::ButtonName rechts, Gosu::ButtonName links)
 	{
@@ -259,8 +411,8 @@ public:
 			//Es wird bewusst abgefragt ob die Y-Position des Spielers >= der der Plattformoberfläche ist, da diese Funktion nur begrenzt pro Sekunde aufgerufen wird, kann es passiere, dass der Spieler in der Plattform ist.
 			if (spieler.position_spieler_y >= plattformliste.at(spieler.plattform_nr).oben_y && !input().down(oben))
 			{
-				spieler.geschwindigkeit_spieler_y = 0;
-				spieler.position_spieler_y = plattformliste.at(spieler.plattform_nr).oben_y;
+			spieler.geschwindigkeit_spieler_y = 0;
+			spieler.position_spieler_y = plattformliste.at(spieler.plattform_nr).oben_y;
 			}
 
 			//Ist der Spieler auf einer Plattform und die Springen-Taste wird betätigt, so wird die aktuelle Y-Geschwindigkeit auf 0, sodass die Figur nicht in der Plattform drin ist.
@@ -292,6 +444,9 @@ public:
 	}
 
 
+
+
+
 	//Abstand der Spieler
 	double abstand_spieler_x;
 	double abstand_spieler_y;
@@ -304,22 +459,58 @@ public:
 	void draw() override
 	{
 
-		hintergrund.draw_rot(500, 350, -5.0, 0.0, 0.5, 0.5, 1.25, 1.25);
-
-		for (auto it = plattformliste.begin(); it != plattformliste.end(); it++)
+		switch (modus)
 		{
-			it->draw();
+			case 0:
+				startbildschirm.draw(anzeige_startbildschirm, 500, 350, 0.0, 1, 1, Gosu::Color::BLUE);
+				break;
+
+			case 1:
+				hintergrund.draw_rot(500, 350, -5.0, 0.0, 0.5, 0.5, 1.25, 1.25);
+
+				for (auto it = plattformliste.begin(); it != plattformliste.end(); it++)
+				{
+					it->draw();
+				}
+
+				text_spieler_1.draw(spieler_1.name, 20, 20, 0.0, 1, 1, Gosu::Color::RED);
+				text_spieler_2.draw(spieler_2.name, 890, 20, 0.0, 1, 1, Gosu::Color::GREEN);
+				anzeige_leben_spieler_1.draw(to_string(spieler_1.lebensanzahl) + " Leben", 20, 50, 0.0, 1, 1, Gosu::Color::RED);
+				anzeige_leben_spieler_2.draw(to_string(spieler_2.lebensanzahl) + " Leben", 890, 50, 0.0, 1, 1, Gosu::Color::GREEN);
+				anzeige_leben_spieler_1.draw(to_string(spieler_1.leben_spieler) + "%", 20, 80, 0.0, 1, 1, Gosu::Color::RED);
+				anzeige_leben_spieler_2.draw(to_string(spieler_2.leben_spieler) + "%", 890, 80, 0.0, 1, 1, Gosu::Color::GREEN);
+
+				spieler_1.draw();
+				spieler_2.draw();
+
+				spieler_1.draw_geschosse();
+				spieler_2.draw_geschosse();
+
+				break;
+
+			case 2:
+
+
+				if (sieger == 0)
+				{
+					gewonnen_endbildschirm = "Unentschieden";
+				}
+				else if (sieger == 1)
+				{
+					gewonnen_endbildschirm = spieler_1.name;
+				}
+				else if (sieger == 2)
+				{
+					gewonnen_endbildschirm = spieler_2.name;
+				}
+				endbildschirm.draw(gewonnen_endbildschirm, 500, 350, 0.0, 1, 1, Gosu::Color::BLUE);
+				endbildschirm.draw("Neues Spiel mit RETURN", 500, 450, 0.0, 1, 1, Gosu::Color::BLUE);
+				break;
+
+			default:
+				break;
 		}
 
-
-		text_spieler_1.draw("Spieler 1", 20, 20, 0.0, 1, 1, Gosu::Color::RED);
-		text_spieler_2.draw(" Spieler 2", 680, 20, 0.0, 1, 1, Gosu::Color::RED);
-		anzeige_leben_spieler_1.draw(to_string(spieler_1.lebensanzahl), 20, 50, 0.0, 1, 1, Gosu::Color::RED);
-		anzeige_leben_spieler_2.draw(to_string(spieler_2.lebensanzahl), 680, 50, 0.0, 1, 1, Gosu::Color::RED);
-
-
-		spieler_1.draw();
-		spieler_2.draw();
 	}
 
 
@@ -333,13 +524,61 @@ public:
 		}
 
 
+		switch (modus) 
+		{
+			case 0:
+				if (input().down(Gosu::KB_RETURN))
+				{
+					modus = 1;
+				}
+				break;
 
-		bewegung_spieler(spieler_1, Gosu::KB_UP, Gosu::KB_RIGHT, Gosu::KB_LEFT);
-		bewegung_spieler(spieler_2, Gosu::KB_W, Gosu::KB_D, Gosu::KB_A);
+			case 1:
+				bewegung_spieler(spieler_1, Gosu::KB_UP, Gosu::KB_RIGHT, Gosu::KB_LEFT);
+				bewegung_spieler(spieler_2, Gosu::KB_W, Gosu::KB_D, Gosu::KB_A);
 
+				schiessen(spieler_1, Gosu::KB_RIGHT_ALT, patrone_spieler_1, spieler_1.zaehler, spieler_1.schiessen_moeglich);
+				schiessen(spieler_2, Gosu::KB_SPACE, patrone_spieler_2, spieler_2.zaehler, spieler_2.schiessen_moeglich);
 
-		spieler_1.rewspan_nach_out_of_map();
-		spieler_2.rewspan_nach_out_of_map();
+				//spieler_1.update_geschosse();
+				//spieler_2.update_geschosse();
+				getroffen_von_geschoss(spieler_1, spieler_2);
+
+				spieler_1.rewspan();
+				spieler_2.rewspan();
+
+				if (spieler_1.lebensanzahl == 0 || spieler_2.lebensanzahl == 0)
+				{
+					if (spieler_1.lebensanzahl == 0)
+					{
+						sieger = 2;
+					}
+					else if (spieler_2.lebensanzahl == 0)
+					{
+						sieger = 1;
+					}
+					else
+					{
+						sieger = 0;
+					}
+
+					modus = 2;
+				}
+				break;
+
+			case 2:
+				if (input().down(Gosu::KB_RETURN))
+				{
+					spieler_1.neues_spiel();
+					spieler_2.neues_spiel();
+					modus = 1;
+				}
+				break;
+
+			default:
+				modus = 0;
+				break;
+		}
 
 
 
@@ -390,7 +629,6 @@ public:
 
 //#########################################################################################
 
-//cout << position_spieler_1_x << "\t" << position_spieler_1_y << "\t" << geschwindigkeit_spieler_1_y << endl;
 		cout << spieler_1.position_spieler_x <<"\t" << spieler_1.position_spieler_y << endl;
 	};
 };
