@@ -127,6 +127,7 @@ struct Spieler
 
 	//Vektor mit Geschossen
 	vector<Geschoss> geschosse;
+	Gosu::Sample schuss_sound;
 	//schiessen
 	int zaehler = 0;
 	bool schiessen_moeglich = true;
@@ -183,8 +184,6 @@ struct Spieler
 		}
 	}
 
-
-
 	void rewspan()
 	{
 		if (position_spieler_y >= 1000 || leben_spieler <= 0)
@@ -233,6 +232,7 @@ int geschwindigkeit_in_y_richtung = geschwindigkeit_y(sprunghoehe);
 
 class GameWindow : public Gosu::Window
 {
+	int einmal_endsound_abspielen = 0;
 	int modus = 0;
 	int sieger = 0; 
 	Spieler spieler_1;
@@ -253,6 +253,11 @@ public:
 	Gosu::Image endbildschirm_mario;
 	Gosu::Image endbildschirm_luigi;
 
+	Gosu::Sample schuss_1_sound;
+	Gosu::Sample schuss_2_sound;
+	Gosu::Song end_sound;
+	Gosu::Song themen_song;
+
 	Gosu::Font text_spieler_1, text_spieler_2, anzeige_leben_spieler_1, anzeige_leben_spieler_2;
 
 	GameWindow()
@@ -265,10 +270,13 @@ public:
 		startbildschirm("Startbildschirm.png"), endbildschirm_unentschieden("Endbildschirm_unentschieden.png"), endbildschirm_mario("Endbildschirm_mario.png"), endbildschirm_luigi("Endbildschirm_luigi.png"),
 		spieler_1(start_position_spieler_1_x, start_position_spieler_1_y, true, Gosu::Image("Mario_Figur_Rechtsblick.png"), Gosu::Image("Mario_Figur_Linksblick.png"), Gosu::Image("Mario_Figur_Springen_Rechts.png"), Gosu::Image("Mario_Figur_Springen_Links.png")),
 		spieler_2(start_position_spieler_2_x, start_position_spieler_2_y, false, Gosu::Image("Luigi_Figur_Rechtsblick.png"), Gosu::Image("Luigi_Figur_Linksblick.png"), Gosu::Image("Luigi_Figur_Springen_Rechts.png"), Gosu::Image("Luigi_Figur_Springen_Links.png")),
-		text_spieler_1(30), text_spieler_2(30), anzeige_leben_spieler_1(30), anzeige_leben_spieler_2(30)
+		text_spieler_1(30), text_spieler_2(30), anzeige_leben_spieler_1(30), anzeige_leben_spieler_2(30),
+		schuss_1_sound("spieler_1_schuss.wav"), schuss_2_sound("spieler_2_schuss.wav"), end_sound("end_sound.wav"), themen_song("thema.mp3")
 	{
 		spieler_1.name = "Mario";
 		spieler_2.name = "Luigi";
+		spieler_1.schuss_sound = schuss_1_sound;
+		spieler_2.schuss_sound = schuss_2_sound;
 
 		//Textlänge beim Start berechnen -> später läuft das Programm flüssiger wenn der Text aufgerufen wird, da nicht immer die Länge berechnet wird.
 		text_spieler_1.text_width(spieler_1.name);
@@ -279,7 +287,6 @@ public:
 		plattformliste.push_back(Plattform(plattform, 700, 400, 250, 20));
 		plattformliste.push_back(Plattform(plattform, 500, 200, 250, 20));
 		plattformliste.push_back(Plattform(hauptplattform, 500, 650, 700, 100));
-
 
 		set_caption("Benjamin und Luca");
 	}
@@ -297,6 +304,8 @@ public:
 		}
 		if (input().down(schuss) && spieler.schiessen_moeglich == true && spieler.geschosse.size() < 5)
 		{
+			spieler.schuss_sound.play(0.5,1.5,false);
+
 			spieler.geschosse.push_back(Geschoss(spieler.position_spieler_x, spieler.position_spieler_y, spieler.blick_spieler_rechts, bild));
 			spieler.schiessen_moeglich = false;
 			spieler.zaehler = 15;					//0,5 sekunden warten, da die Funktion 30 mal die Sekunde aufgerufen wird.
@@ -480,25 +489,27 @@ public:
 
 
 
-	//Abstand der Spieler
-	double abstand_spieler_x;
-	double abstand_spieler_y;
-
-
-
 	// wird bis zu 60x pro Sekunde aufgerufen.
 	// Wenn die Grafikkarte oder der Prozessor nicht mehr hinterherkommen,
 	// dann werden `draw` Aufrufe ausgelassen und die Framerate sinkt
 	void draw() override
 	{
-
 		switch (modus)
 		{
 			case 0:
+
+				themen_song.set_volume(1);
+				themen_song.play();
+
 				startbildschirm.draw_rot(500, 350, 0.0, 0.0, 0.5, 0.5, 1.0, 1.0);
 				break;
 
 			case 1:
+
+				themen_song.play();
+
+				end_sound.stop();
+
 				hintergrund.draw_rot(500, 350, -5.0, 0.0, 0.5, 0.5, 1.25, 1.25);
 
 				for (auto it = plattformliste.begin(); it != plattformliste.end(); it++)
@@ -520,8 +531,16 @@ public:
 				spieler_2.draw_geschosse();
 
 				break;
-
 			case 2:
+
+				themen_song.stop();
+
+				while (einmal_endsound_abspielen == 0)
+				{
+					end_sound.set_volume(1);
+					end_sound.play();
+					einmal_endsound_abspielen = einmal_endsound_abspielen + 1;
+					}
 
 				if (sieger == 0)
 				{
@@ -599,6 +618,7 @@ public:
 			case 2:
 				if (input().down(Gosu::KB_RETURN))
 				{
+					einmal_endsound_abspielen = 0;
 					spieler_1.neues_spiel();
 					spieler_2.neues_spiel();
 					modus = 1;
@@ -610,7 +630,6 @@ public:
 				break;
 		}	
 
-//#########################################################################################
 
 		//cout << spieler_1.position_spieler_x <<"\t" << spieler_1.position_spieler_y << endl;
 	};
