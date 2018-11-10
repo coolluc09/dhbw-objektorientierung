@@ -202,6 +202,7 @@ struct Spieler
 		position_spieler_y = start_position_y;
 		lebensanzahl = lebensanzahl_anfang;
 		leben_spieler = leben_anfang;
+		geschosse.erase(geschosse.begin(), geschosse.end());
 	}
 
 	Spieler(int position_x, int position_y, bool nach_rechts_schauen, const Gosu::Image blick_rechts, const Gosu::Image blick_links, const Gosu::Image springen_rechts, const Gosu::Image springen_links)
@@ -230,7 +231,6 @@ int geschwindigkeit_in_y_richtung = geschwindigkeit_y(sprunghoehe);
 
 
 
-
 class GameWindow : public Gosu::Window
 {
 	int modus = 0;
@@ -248,8 +248,10 @@ public:
 	Gosu::Image hintergrund;
 	Gosu::Image patrone_spieler_1;
 	Gosu::Image patrone_spieler_2;
-	Gosu::Font endbildschirm;
-	Gosu::Font startbildschirm;
+	Gosu::Image startbildschirm;
+	Gosu::Image endbildschirm_unentschieden;
+	Gosu::Image endbildschirm_mario;
+	Gosu::Image endbildschirm_luigi;
 
 	Gosu::Font text_spieler_1, text_spieler_2, anzeige_leben_spieler_1, anzeige_leben_spieler_2;
 
@@ -260,17 +262,17 @@ public:
 		hintergrund("Hintergrund_2.jpg"),
 		patrone_spieler_1("Mario_geschoss.png"),
 		patrone_spieler_2("Luigi_geschoss.png"),
+		startbildschirm("Startbildschirm.png"), endbildschirm_unentschieden("Endbildschirm_unentschieden.png"), endbildschirm_mario("Endbildschirm_mario.png"), endbildschirm_luigi("Endbildschirm_luigi.png"),
 		spieler_1(start_position_spieler_1_x, start_position_spieler_1_y, true, Gosu::Image("Mario_Figur_Rechtsblick.png"), Gosu::Image("Mario_Figur_Linksblick.png"), Gosu::Image("Luigi_Figur_Springen_Rechts.png"), Gosu::Image("Luigi_Figur_Springen_Links.png")),
 		spieler_2(start_position_spieler_2_x, start_position_spieler_2_y, false, Gosu::Image("Luigi_Figur_Rechtsblick.png"), Gosu::Image("Luigi_Figur_Linksblick.png"), Gosu::Image("Luigi_Figur_Springen_Rechts.png"), Gosu::Image("Luigi_Figur_Springen_Links.png")),
-		text_spieler_1(30), text_spieler_2(30), anzeige_leben_spieler_1(30), anzeige_leben_spieler_2(30),
-		endbildschirm(60),startbildschirm(60)
+		text_spieler_1(30), text_spieler_2(30), anzeige_leben_spieler_1(30), anzeige_leben_spieler_2(30)
 	{
-		//Textlänge beim Start berechnen -> später läuft das Programm flüssiger wenn der Text aufgerufen wird, da nicht immer die Länge berechnet wird.
-		startbildschirm.text_width(anzeige_startbildschirm);
-		endbildschirm.text_width(anzeige_endbildschirm);
-
 		spieler_1.name = "Mario";
 		spieler_2.name = "Luigi";
+
+		//Textlänge beim Start berechnen -> später läuft das Programm flüssiger wenn der Text aufgerufen wird, da nicht immer die Länge berechnet wird.
+		text_spieler_1.text_width(spieler_1.name);
+		text_spieler_2.text_width(spieler_2.name);
 
 		//Plattformen erstellen
 		plattformliste.push_back(Plattform(plattform, 300, 400, 250, 20));
@@ -462,7 +464,7 @@ public:
 		switch (modus)
 		{
 			case 0:
-				startbildschirm.draw(anzeige_startbildschirm, 500, 350, 0.0, 1, 1, Gosu::Color::BLUE);
+				startbildschirm.draw_rot(500, 350, 0.0, 0.0, 0.5, 0.5, 1.0, 1.0);
 				break;
 
 			case 1:
@@ -490,21 +492,18 @@ public:
 
 			case 2:
 
-
 				if (sieger == 0)
 				{
-					gewonnen_endbildschirm = "Unentschieden";
+					endbildschirm_unentschieden.draw_rot(500, 350, 0.0, 0.0, 0.5, 0.5, 1.0, 1.0);
 				}
 				else if (sieger == 1)
 				{
-					gewonnen_endbildschirm = spieler_1.name;
+					endbildschirm_mario.draw_rot(500, 350, 0.0, 0.0, 0.5, 0.5, 1.0, 1.0);
 				}
 				else if (sieger == 2)
 				{
-					gewonnen_endbildschirm = spieler_2.name;
+					endbildschirm_luigi.draw_rot(500, 350, 0.0, 0.0, 0.5, 0.5, 1.0, 1.0);
 				}
-				endbildschirm.draw(gewonnen_endbildschirm, 500, 350, 0.0, 1, 1, Gosu::Color::BLUE);
-				endbildschirm.draw("Neues Spiel mit RETURN", 500, 450, 0.0, 1, 1, Gosu::Color::BLUE);
 				break;
 
 			default:
@@ -520,6 +519,7 @@ public:
 		//bei betätigen von esc wird das Programm geschlossen
 		if (Window::input().down(Gosu::KB_ESCAPE))
 		{
+			cout << "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nSpiel beendet\nBenjamin Schuppel und Luca Valenziano\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n" << endl;
 			Window::close();
 		}
 
@@ -629,7 +629,7 @@ public:
 
 //#########################################################################################
 
-		cout << spieler_1.position_spieler_x <<"\t" << spieler_1.position_spieler_y << endl;
+		//cout << spieler_1.position_spieler_x <<"\t" << spieler_1.position_spieler_y << endl;
 	};
 };
 
@@ -638,5 +638,4 @@ int main()
 {
 	GameWindow window;
 	window.show();
-
 }
