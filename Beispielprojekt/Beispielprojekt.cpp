@@ -19,6 +19,15 @@ using namespace std;
 const double DT = 100.0;
 
 
+//Abstand der Spieler
+int abstand_spieler_x;
+int abstand_spieler_y;
+bool schlagreichweite;
+double schlagkraft = 1.7;
+int schlagabstand_x = 50;
+int schlagabstand_y = 50;
+
+
 int spieler_min_abstand_x = 10;
 int spieler_min_abstand_y = 42;
 
@@ -104,6 +113,8 @@ struct Spieler
 {
 	int start_position_x;
 	int start_position_y;
+
+	int zaehler_rewspan = 90;
 	//Name des Spielers
 	string name;
 	//Positionen des Spielers
@@ -124,6 +135,8 @@ struct Spieler
 	int plattform_nr;
 	//Vekto mit den Bildern der Spielfigur
 	vector<Gosu::Image> spielfigur;
+	//Schlagaktion
+	bool schlagaktion;
 
 	//Vektor mit Geschossen
 	vector<Geschoss> geschosse;
@@ -141,15 +154,31 @@ struct Spieler
 		this->spielfigur.push_back(springen_links);
 	}
 	
+
 	void draw()
 	{
 		if (blick_spieler_rechts && beschleunigung_spieler_y == 0)
 		{
-			spielfigur.at(0).draw_rot(position_spieler_x, position_spieler_y, 0.0, 0.0, 0.5, 1.0, 1.0, 1.0);
+			if (schlagaktion)
+			{
+				spielfigur.at(2).draw_rot(position_spieler_x, position_spieler_y, 0.0, 0.0, 0.5, 1.0, 1.0, 1.0);
+			}
+			else
+			{
+				spielfigur.at(0).draw_rot(position_spieler_x, position_spieler_y, 0.0, 0.0, 0.5, 1.0, 1.0, 1.0);
+			}
 		}
-		else if(blick_spieler_rechts == false && beschleunigung_spieler_y == 0)
+		else if (blick_spieler_rechts == false && beschleunigung_spieler_y == 0)
 		{
-			spielfigur.at(1).draw_rot(position_spieler_x, position_spieler_y, 0.0, 0.0, 0.5, 1.0, 1.0, 1.0);
+			if (schlagaktion)
+			{
+				spielfigur.at(3).draw_rot(position_spieler_x, position_spieler_y, 0.0, 0.0, 0.5, 1.0, 1.0, 1.0);
+			}
+			else
+			{
+				spielfigur.at(1).draw_rot(position_spieler_x, position_spieler_y, 0.0, 0.0, 0.5, 1.0, 1.0, 1.0);
+			}
+
 		}
 		else if (blick_spieler_rechts && beschleunigung_spieler_y != 0)
 		{
@@ -159,7 +188,6 @@ struct Spieler
 		{
 			spielfigur.at(3).draw_rot(position_spieler_x, position_spieler_y, 0.0, 0.0, 0.5, 1.0, 1.0, 1.0);
 		}
-
 	}
 
 	void draw_geschosse()
@@ -188,10 +216,25 @@ struct Spieler
 	{
 		if (position_spieler_y >= 1000 || leben_spieler <= 0)
 		{
-			leben_spieler = leben_anfang;
-			lebensanzahl = lebensanzahl - 1;
-			position_spieler_x = start_position_x;
-			position_spieler_y = start_position_y;
+			schiessen_moeglich = false;
+			zaehler = 200;
+			leben_spieler = 0;
+			position_spieler_x = -200;
+			position_spieler_y = 1000;
+			leben_spieler = 0;
+			zaehler_rewspan = zaehler_rewspan - 1;
+
+			if (zaehler_rewspan == 0 || lebensanzahl == 1)
+			{
+				leben_spieler = leben_anfang;
+				lebensanzahl = lebensanzahl - 1;
+				position_spieler_x = start_position_x;
+				position_spieler_y = start_position_y;
+				schiessen_moeglich = true;
+				zaehler = 0;
+				zaehler_rewspan = 90;
+
+			}
 		}
 	}
 
@@ -228,7 +271,20 @@ int geschwindigkeit_y(int sprunghoehe)
 
 int geschwindigkeit_in_y_richtung = geschwindigkeit_y(sprunghoehe);
 
+// Funktion zur Abfrage der Schlagreichweite die den Abstand der beiden Spieler zyklisch abfragt
+void reichweitenmessung(Spieler& spieler1, Spieler& spieler2)
+{
+	if ((sqrt(((spieler1.position_spieler_x) - (spieler2.position_spieler_x))*((spieler1.position_spieler_x) - (spieler2.position_spieler_x))) <= schlagabstand_x) && (sqrt(((spieler1.position_spieler_y) - (spieler2.position_spieler_y))*((spieler1.position_spieler_y) - (spieler2.position_spieler_y))) <= schlagabstand_y))
+	{
+		schlagreichweite = true;
 
+	}
+	else
+	{
+		schlagreichweite = false;
+
+	}
+}
 
 class GameWindow : public Gosu::Window
 {
@@ -302,7 +358,7 @@ public:
 		{
 			spieler.schiessen_moeglich = true;
 		}
-		if (input().down(schuss) && spieler.schiessen_moeglich == true && spieler.geschosse.size() < 5)
+		if (input().down(schuss) && spieler.schiessen_moeglich == true && spieler.geschosse.size() < 3)
 		{
 			spieler.schuss_sound.play(0.5,1.5,false);
 
@@ -454,39 +510,39 @@ public:
 
 	}
 
-	void spieler_stossen_sich_ab(Spieler& spieler_1, Spieler& spieler_2)
+	// Funktion zum Ausführen einer Schlagaktion
+	void schlagen(Spieler& spieler_schlaeger, Spieler& spieler_geschlagener, Gosu::ButtonName schlagen)
 	{
-		int abstand_spieler_x = sqrt(pow((spieler_1.position_spieler_x - spieler_2.position_spieler_x), 2));
-		int abstand_spieler_y = sqrt(pow((spieler_1.position_spieler_y - spieler_2.position_spieler_y), 2));
+		// Prüfen auf Tastendruck der jeweiligen Schlagtaste (SPACE (Spieler2) bzw. RIGHT_STRG(Spieler1))
+		if (input().down(schlagen))
+		{
+			spieler_schlaeger.schlagaktion = true;
+			// Prüfen ob Spieler sich in Schlagreichweite befinden
+			if (schlagreichweite)
+			{
+				// Abziehern eines Lebens
+				spieler_geschlagener.leben_spieler = spieler_geschlagener.leben_spieler - 20;
 
-		if (abstand_spieler_x <= spieler_min_abstand_x && abstand_spieler_y <= spieler_min_abstand_y)
-		{
-		if (spieler_1.position_spieler_x > spieler_2.position_spieler_x)
-		{
-			spieler_1.beschleunigung_spieler_x = 100 ;
-			spieler_2.beschleunigung_spieler_x = -100;
+				if (spieler_schlaeger.position_spieler_x <= spieler_geschlagener.position_spieler_x)
+				{
+					spieler_geschlagener.position_spieler_x = spieler_geschlagener.position_spieler_x + 100;
+					spieler_geschlagener.geschwindigkeit_spieler_y = -(geschwindigkeit_in_y_richtung / schlagkraft);
+				}
+				if (spieler_schlaeger.position_spieler_x > spieler_geschlagener.position_spieler_x)
+				{
+					spieler_geschlagener.position_spieler_x = spieler_geschlagener.position_spieler_x - 100;
+					spieler_geschlagener.geschwindigkeit_spieler_y = -(geschwindigkeit_in_y_richtung / schlagkraft);
+				}
+
+			}
+
 		}
 		else
 		{
-			spieler_1.beschleunigung_spieler_x = -100;
-			spieler_2.beschleunigung_spieler_x = 100;
+			spieler_schlaeger.schlagaktion = false;
 		}
-		if (spieler_1.leben_spieler >= 45)
-		{
-			spieler_1.leben_spieler = spieler_1.leben_spieler - 5;
-		}
-		if (spieler_2.leben_spieler >= 45)
-		{
-			spieler_2.leben_spieler = spieler_2.leben_spieler - 5;
-		}
-		}
-		else
-		{
-			spieler_1.beschleunigung_spieler_x = 0;
-			spieler_2.beschleunigung_spieler_x = 0;
-		}
+
 	}
-
 
 
 	// wird bis zu 60x pro Sekunde aufgerufen.
@@ -587,10 +643,13 @@ public:
 				bewegung_spieler(spieler_1, Gosu::KB_UP, Gosu::KB_RIGHT, Gosu::KB_LEFT);
 				bewegung_spieler(spieler_2, Gosu::KB_W, Gosu::KB_D, Gosu::KB_A);
 
+				reichweitenmessung(spieler_1, spieler_2);
+				schlagen(spieler_1, spieler_2, Gosu::KB_RIGHT_CONTROL);
+				schlagen(spieler_2, spieler_1, Gosu::KB_LEFT_ALT);
+
 				schiessen(spieler_1, Gosu::KB_RIGHT_ALT, patrone_spieler_1, spieler_1.zaehler, spieler_1.schiessen_moeglich);
 				schiessen(spieler_2, Gosu::KB_SPACE, patrone_spieler_2, spieler_2.zaehler, spieler_2.schiessen_moeglich);
 
-				spieler_stossen_sich_ab(spieler_1, spieler_2);
 				getroffen_von_geschoss(spieler_1, spieler_2);
 
 				spieler_1.rewspan();
